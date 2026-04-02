@@ -1,0 +1,9 @@
+<Project>
+  <Target
+    Name="_EnsurePdbCmfExeFullPath"
+    Condition="'$(AppxSymbolPackageEnabled)' == 'false'">
+    <PropertyGroup>
+      <MsPdbCmfExeFullpath></MsPdbCmfExeFullpath>
+    </PropertyGroup>
+  </Target>
+</Project>

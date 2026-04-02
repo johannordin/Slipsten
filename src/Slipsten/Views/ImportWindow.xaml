@@ -1,0 +1,50 @@
+<Window x:Class="Slipsten.Views.ImportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Import Grindstone Data — Slipsten">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="AppTitleBar" Grid.Row="0">
+            <TextBlock Text="Import Grindstone Data" VerticalAlignment="Center" Margin="16,0,0,0"
+                       Style="{StaticResource CaptionTextBlockStyle}"/>
+        </Grid>
+
+        <Grid Grid.Row="1" Padding="20,16,20,20">
+            <StackPanel Spacing="12" VerticalAlignment="Top">
+                <!-- Select backup section -->
+                <StackPanel Spacing="6">
+                    <TextBlock Text="Enter Grindstone Backup Path" FontWeight="SemiBold"/>
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <TextBox x:Name="BackupPathBox" 
+                                 HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                 PlaceholderText="e.g., C:\Users\{User}\AppData\Roaming\Grindstone 4\Backups\{GUID}"/>
+                        <Button Content="Load" Click="Load_Click" Width="60"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Preview section -->
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" CornerRadius="6" Padding="12"
+                        MinHeight="120">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Preview" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="PreviewText" TextWrapping="Wrap" 
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Buttons -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="6" Margin="0,12,0,0">
+                    <Button Content="Cancel" Click="Cancel_Click"/>
+                    <Button x:Name="ImportButton" Content="Import" Click="Import_Click"
+                            Style="{StaticResource AccentButtonStyle}" IsEnabled="False"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

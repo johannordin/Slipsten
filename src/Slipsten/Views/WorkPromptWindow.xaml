@@ -1,0 +1,24 @@
+<Window x:Class="Slipsten.Views.WorkPromptWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Slipsten">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="AppTitleBar" Grid.Row="0">
+            <TextBlock Text="Slipsten" VerticalAlignment="Center" Margin="16,0,0,0"
+                       Style="{StaticResource CaptionTextBlockStyle}"/>
+        </Grid>
+
+        <StackPanel Grid.Row="1" Padding="24,4,24,16">
+            <TextBlock x:Name="MessageText"
+                       TextWrapping="Wrap"
+                       FontSize="13"
+                       Margin="0,0,0,14"/>
+            <StackPanel x:Name="ButtonPanel" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8"/>
+        </StackPanel>
+    </Grid>
+</Window>

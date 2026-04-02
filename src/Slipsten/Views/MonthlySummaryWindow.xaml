@@ -1,0 +1,95 @@
+<Window x:Class="Slipsten.Views.MonthlySummaryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Monthly Summary — Slipsten">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="AppTitleBar" Grid.Row="0">
+            <TextBlock Text="Monthly Summary" VerticalAlignment="Center" Margin="16,0,0,0"
+                       Style="{StaticResource CaptionTextBlockStyle}"/>
+        </Grid>
+
+        <Grid Grid.Row="1" Padding="12,4,12,12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Month navigator -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6" Margin="0,0,0,10">
+                <Button Content="◀" Click="PrevMonth_Click" Width="32"/>
+                <TextBlock x:Name="MonthLabel" VerticalAlignment="Center" Margin="6,0"
+                           FontSize="16" FontWeight="SemiBold"/>
+                <Button Content="▶" Click="NextMonth_Click" Width="32"/>
+            </StackPanel>
+
+        <!-- Column headers + summary list -->
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Padding="12,6,12,6"
+                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                  CornerRadius="4,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="120"/>
+                    <ColumnDefinition Width="100"/>
+                    <ColumnDefinition Width="100"/>
+                    <ColumnDefinition Width="90"/>
+                    <ColumnDefinition Width="90"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Date" FontWeight="SemiBold"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <TextBlock Grid.Column="1" Text="Ordinary" FontWeight="SemiBold"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <TextBlock Grid.Column="2" Text="Double Pay" FontWeight="SemiBold"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <TextBlock Grid.Column="3" Text="Total" FontWeight="SemiBold"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                <TextBlock Grid.Column="4" Text="Rounded" FontWeight="SemiBold"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            </Grid>
+
+            <ListView Grid.Row="1" x:Name="SummaryList" SelectionMode="None">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="Padding" Value="4,0,4,0"/>
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Padding="4,2,4,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="90"/>
+                                <ColumnDefinition Width="90"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="{Binding DateFormatted}"/>
+                            <TextBlock Grid.Column="1" Text="{Binding OrdinaryFormatted}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding DoublePayFormatted}"/>
+                            <TextBlock Grid.Column="3" Text="{Binding TotalFormatted}"/>
+                            <TextBlock Grid.Column="4" Text="{Binding TotalRoundedFormatted}"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Grid>
+
+        <!-- Totals footer -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+            <TextBlock x:Name="TotalLabel" FontSize="13" FontWeight="SemiBold"
+                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+        </StackPanel>
+        </Grid>
+    </Grid>
+</Window>
