@@ -31,9 +31,9 @@
             <Button x:Name="TimeButton" Grid.Column="1" Click="Time_Click"
                     VerticalAlignment="Center" HorizontalAlignment="Center"
                     HorizontalContentAlignment="Center"
-                    Background="Transparent" BorderThickness="0" Padding="2,4,2,4"
+                    Background="Transparent" BorderThickness="0" Padding="2"
                     MinWidth="0">
-                <TextBlock x:Name="TotalTimeText" FontSize="13" FontWeight="SemiBold"/>
+                <TextBlock x:Name="TotalTimeText" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
             </Button>
 
             <Button x:Name="AzureDevOpsButton" Grid.Column="2" Click="AzureDevOps_Click"
