@@ -86,10 +86,9 @@
         </Grid>
 
         <!-- Totals footer -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
-            <TextBlock x:Name="TotalLabel" FontSize="13" FontWeight="SemiBold"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-        </StackPanel>
+        <TextBlock Grid.Row="2" x:Name="TotalLabel" Margin="0,10,0,0"
+                   FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
         </Grid>
     </Grid>
 </Window>

@@ -12,6 +12,7 @@ public class CliWidgetDefinition
     public string Icon { get; set; } = "";
     public string Tooltip { get; set; } = "";
     public int RefreshSeconds { get; set; } = 60;
+    public string Command { get; set; } = "";
     public BadgeDefinition? Badge { get; set; }
     public FlyoutDefinition? Flyout { get; set; }
 }
@@ -19,6 +20,7 @@ public class CliWidgetDefinition
 public class BadgeDefinition
 {
     public string Command { get; set; } = "";
+    public string Text { get; set; } = "";
     public string Source { get; set; } = "array.length";
     public string Color { get; set; } = "#0078d4";
     public string Position { get; set; } = "bottom-right";

@@ -57,9 +57,9 @@ public partial class CliWidgetRunner : IDisposable
 
         try
         {
-            var command = SubstituteVariables(_definition.Badge.Command);
+            var command = GetCommand(_definition.Badge.Command, "badge");
             var output = await RunCommandAsync(command);
-            var count = ParseBadgeCount(output, _definition.Badge.Source);
+            var count = ParseBadgeCount(output, _definition.Badge);
 
             var changed = count != BadgeCount;
             BadgeCount = count;
@@ -104,9 +104,25 @@ public partial class CliWidgetRunner : IDisposable
             throw new InvalidOperationException($"Widget '{WidgetId}' has invalid flyout template configuration. {migrationHint}");
         }
 
-        var command = SubstituteVariables(_definition.Flyout.Command);
+        var command = GetCommand(_definition.Flyout.Command, "flyout");
         var output = await RunCommandAsync(command);
         return ParseFlyoutItems(output, displayTemplate, urlTemplate);
+    }
+
+    private string GetCommand(string sectionCommand, string sectionName)
+    {
+        var command = string.IsNullOrWhiteSpace(sectionCommand)
+            ? _definition.Command
+            : sectionCommand;
+
+        if (string.IsNullOrWhiteSpace(command))
+        {
+            throw new InvalidOperationException(
+                $"Widget '{WidgetId}' has no {sectionName} command. " +
+                "Set 'command' on the widget or on the specific section.");
+        }
+
+        return SubstituteVariables(command);
     }
 
     private async Task<string> RunCommandAsync(string command)
@@ -150,11 +166,12 @@ public partial class CliWidgetRunner : IDisposable
         return output;
     }
 
-    private int ParseBadgeCount(string jsonOutput, string source)
+    private int ParseBadgeCount(string jsonOutput, BadgeDefinition badge)
     {
         if (string.IsNullOrWhiteSpace(jsonOutput))
             return 0;
 
+        var source = GetBadgeSource(badge);
         var element = JsonDocument.Parse(jsonOutput).RootElement;
 
         if (source == "array.length")
@@ -171,6 +188,19 @@ public partial class CliWidgetRunner : IDisposable
         }
 
         return 0;
+    }
+
+    private static string GetBadgeSource(BadgeDefinition badge)
+    {
+        var text = badge.Text ?? string.Empty;
+
+        if (text.Contains("{array.length}", StringComparison.Ordinal))
+            return "array.length";
+
+        if (text.Contains("{value}", StringComparison.Ordinal))
+            return "value";
+
+        return badge.Source;
     }
 
     private List<FlyoutItem> ParseFlyoutItems(string jsonOutput, string itemFormat, string itemUrl)

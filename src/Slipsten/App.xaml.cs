@@ -28,6 +28,7 @@ public partial class App : Application
     private DispatcherQueue? _dispatcherQueue;
     private DispatcherQueueTimer? _phoneAlertTimer;
     private Window? _sentinel;
+    private FloatingBarWindow? _previewFloatingBar;
     private bool _isExiting;
 
     private DateTime _idleStartedAt;
@@ -35,6 +36,26 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        var commandLineArguments = Environment.GetCommandLineArgs();
+        var floatingBarPreviewIndex = Array.FindIndex(
+            commandLineArguments,
+            argument => string.Equals(argument, "--preview-floating-bar", StringComparison.OrdinalIgnoreCase));
+        if (floatingBarPreviewIndex >= 0)
+        {
+            var preset = floatingBarPreviewIndex + 1 < commandLineArguments.Length
+                ? commandLineArguments[floatingBarPreviewIndex + 1]
+                : "compact";
+            OpenFloatingBarPreviewWindow(preset);
+            return;
+        }
+
+        if (commandLineArguments.Any(argument =>
+                string.Equals(argument, "--preview-monthly-summary", StringComparison.OrdinalIgnoreCase)))
+        {
+            OpenMonthlySummaryPreviewWindow();
+            return;
+        }
+
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
         UnhandledException += (_, e) =>
@@ -309,6 +330,124 @@ public partial class App : Application
         var win = new MonthlySummaryWindow(_tracker!);
         win.Activate();
     }
+
+    private static void OpenMonthlySummaryPreviewWindow()
+    {
+        var window = new MonthlySummaryWindow(CreateMonthlySummaryPreview);
+        window.Activate();
+    }
+
+    private static List<DailySummary> CreateMonthlySummaryPreview(int year, int month)
+    {
+        var firstDay = new DateTime(year, month, 1);
+        var lastDay = firstDay.AddMonths(1).AddDays(-1);
+        var through = DateTime.Today.Date < firstDay
+            ? firstDay.AddDays(-1)
+            : DateTime.Today.Date > lastDay
+                ? lastDay
+                : DateTime.Today.Date;
+
+        var summaries = new List<DailySummary>();
+        for (var day = firstDay; day <= through; day = day.AddDays(1))
+        {
+            if (!SwedishWorkCalendar.IsWorkingDay(day))
+                continue;
+
+            var doublePay = summaries.Count % 5 == 4
+                ? TimeSpan.FromHours(2)
+                : TimeSpan.Zero;
+            summaries.Add(new DailySummary
+            {
+                Date = day,
+                Ordinary = TimeSpan.FromHours(8) - doublePay,
+                DoublePay = doublePay
+            });
+        }
+
+        return summaries;
+    }
+
+    private void OpenFloatingBarPreviewWindow(string preset)
+    {
+        var isBusyPreset = string.Equals(preset, "busy", StringComparison.OrdinalIgnoreCase);
+        var widgetHost = CliWidgetHost.CreatePreview(new CliWidgetsConfig
+        {
+            CliWidgets = isBusyPreset
+                ? CreateBusyPreviewWidgets()
+                : CreateCompactPreviewWidgets()
+        });
+
+        _previewFloatingBar = new FloatingBarWindow(
+            tracker: null,
+            openMainWindow: () => { },
+            openSummaryWindow: () => { },
+            openSettingsWindow: () => { },
+            exitApp: () => Exit(),
+            initialPosition: null,
+            widgetHost: widgetHost,
+            previewTotal: isBusyPreset ? new TimeSpan(12, 47, 0) : new TimeSpan(0, 56, 0),
+            previewIsRunning: isBusyPreset);
+        _previewFloatingBar.Closed += (_, _) =>
+        {
+            _previewFloatingBar.Cleanup();
+            widgetHost.Dispose();
+            _previewFloatingBar = null;
+        };
+        _previewFloatingBar.Activate();
+        widgetHost.StartAll();
+    }
+
+    private static List<CliWidgetDefinition> CreateCompactPreviewWidgets() =>
+    [
+        new CliWidgetDefinition
+        {
+            Id = "pull-requests",
+            Tooltip = "Open pull requests",
+            Command = "echo [1,2,3]",
+            Badge = new BadgeDefinition
+            {
+                Text = "PR:{array.length}",
+                Color = "#8250DF"
+            }
+        }
+    ];
+
+    private static List<CliWidgetDefinition> CreateBusyPreviewWidgets() =>
+    [
+        new CliWidgetDefinition
+        {
+            Id = "pull-requests",
+            Tooltip = "Open pull requests",
+            Command = "echo [1,2,3,4,5,6,7,8,9,10]",
+            Badge = new BadgeDefinition
+            {
+                Text = "PR:{array.length}",
+                Color = "#8250DF"
+            }
+        },
+        new CliWidgetDefinition
+        {
+            Id = "failing-builds",
+            Tooltip = "Failing builds",
+            Command = "echo [1,2]",
+            Badge = new BadgeDefinition
+            {
+                Text = "⚠:{array.length}",
+                Color = "#CF222E"
+            }
+        },
+        new CliWidgetDefinition
+        {
+            Id = "review-requests",
+            Tooltip = "Review requests",
+            Command = "echo [1,2,3,4]",
+            Badge = new BadgeDefinition
+            {
+                Text = "👀:{array.length}",
+                Color = "#0969DA"
+            }
+        }
+    ];
 
     private void OpenSettingsWindow()
     {

@@ -8,6 +8,7 @@ using Slipsten.CliWidgets;
 using Slipsten.Data;
 using Slipsten.Settings;
 using Slipsten.TimeTracking;
+using System.Numerics;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Foundation;
 using Windows.Graphics;
@@ -21,29 +22,33 @@ public partial class FloatingBarWindow : Window
     private const int InitialBarWidthPx = 100;
     private const int BarTopOffset = 50;
     private const int BarRightOffset = 50;
-    private readonly TimeTracker _tracker;
+    private readonly TimeTracker? _tracker;
     private readonly Action _openMainWindow;
     private readonly Action _openSummaryWindow;
     private readonly Action _openSettingsWindow;
     private readonly Action _exitApp;
     private readonly string? _widgetsConfigPath;
+    private readonly TimeSpan? _previewTotal;
+    private readonly bool _previewIsRunning;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly DispatcherQueueTimer _refreshTimer;
     private readonly CliWidgetHost? _widgetHost;
-    private readonly Dictionary<string, (Button button, Border circle, TextBlock text, string tooltip)> _widgetButtons = [];
+    private readonly Dictionary<string, (Button button, Border circle, TextBlock text, string tooltip, string badgeTextTemplate)> _widgetButtons = [];
     private bool _isCleaningUp;
     private int _barWidthPx;
     private PointInt32? _lastKnownPosition;
 
     public FloatingBarWindow(
-        TimeTracker tracker,
+        TimeTracker? tracker,
         Action openMainWindow,
         Action openSummaryWindow,
         Action openSettingsWindow,
         Action exitApp,
         PointInt32? initialPosition,
         CliWidgetHost? widgetHost = null,
-        string? widgetsConfigPath = null)
+        string? widgetsConfigPath = null,
+        TimeSpan? previewTotal = null,
+        bool previewIsRunning = false)
     {
         InitializeComponent();
         _tracker = tracker;
@@ -52,6 +57,9 @@ public partial class FloatingBarWindow : Window
         _openSettingsWindow = openSettingsWindow;
         _exitApp = exitApp;
         _widgetsConfigPath = widgetsConfigPath;
+        _previewTotal = previewTotal;
+        _previewIsRunning = previewIsRunning;
+        TotalTimeText.Translation = new Vector3(0, -1, 0);
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         _widgetHost = widgetHost;
 
@@ -72,7 +80,8 @@ public partial class FloatingBarWindow : Window
 
         Position(initialPosition);
 
-        _tracker.StateChanged += OnTrackerStateChanged;
+        if (_tracker != null)
+            _tracker.StateChanged += OnTrackerStateChanged;
 
         if (_widgetHost != null)
         {
@@ -171,8 +180,9 @@ public partial class FloatingBarWindow : Window
         if (_isCleaningUp)
             return;
 
-        StartStopIcon.Glyph = _tracker.IsRunning ? "\uE71A" : "\uE768";
-        var total = _tracker.TodayTotal();
+        var isRunning = _previewTotal.HasValue ? _previewIsRunning : _tracker?.IsRunning == true;
+        StartStopIcon.Glyph = isRunning ? "\uE71A" : "\uE768";
+        var total = _previewTotal ?? _tracker?.TodayTotal() ?? TimeSpan.Zero;
         TotalTimeText.Text = $"{(int)total.TotalHours}:{total.Minutes:D2}";
         ResizeToContent();
     }
@@ -231,6 +241,9 @@ public partial class FloatingBarWindow : Window
 
     private void StartStop_Click(object sender, RoutedEventArgs e)
     {
+        if (_tracker == null)
+            return;
+
         if (_tracker.IsRunning)
             _tracker.Stop(string.Empty);
         else
@@ -346,6 +359,7 @@ public partial class FloatingBarWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
             Text = "0"
         };
+        text.Translation = new Vector3(0, -1, 0);
 
         circle.Child = text;
 
@@ -363,16 +377,30 @@ public partial class FloatingBarWindow : Window
         ToolTipService.SetToolTip(button, widget.Tooltip);
 
         // Store references
-        _widgetButtons[widget.Id] = (button, circle, text, widget.Tooltip);
+        _widgetButtons[widget.Id] = (
+            button,
+            circle,
+            text,
+            widget.Tooltip,
+            widget.Badge?.Text ?? string.Empty);
 
         // Create flyout
         if (widget.Flyout != null)
         {
             var flyout = new Flyout { ShouldConstrainToRootBounds = false };
-            var flyoutPanel = new StackPanel { Spacing = 2, Padding = new Thickness(6), MinWidth = 280 };
+            var flyoutPanel = new StackPanel
+            {
+                Width = 360,
+                Spacing = 0,
+                Padding = new Thickness(8)
+            };
             flyout.Content = flyoutPanel;
             
-            flyout.Opening += async (_, _) => await BuildWidgetFlyout(widget.Id, flyoutPanel, widget.Flyout);
+            flyout.Opening += async (_, _) => await BuildWidgetFlyout(
+                widget.Id,
+                widget.Tooltip,
+                flyoutPanel,
+                widget.Flyout);
             button.Flyout = flyout;
             button.Click += (_, _) => { }; // Trigger flyout
         }
@@ -380,9 +408,20 @@ public partial class FloatingBarWindow : Window
         return button;
     }
 
-    private async Task BuildWidgetFlyout(string widgetId, StackPanel panel, FlyoutDefinition flyoutDef)
+    private async Task BuildWidgetFlyout(
+        string widgetId,
+        string widgetTooltip,
+        StackPanel panel,
+        FlyoutDefinition flyoutDef)
     {
         panel.Children.Clear();
+        panel.Children.Add(new TextBlock
+        {
+            Text = widgetTooltip,
+            FontSize = 14,
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            Margin = new Thickness(4, 2, 4, 6)
+        });
 
         var runner = _widgetHost?.GetRunner(widgetId);
         if (runner == null)
@@ -398,22 +437,49 @@ public partial class FloatingBarWindow : Window
             }
             else
             {
+                var itemsPanel = new StackPanel { Spacing = 2 };
                 foreach (var item in items)
                 {
+                    var itemText = new TextBlock
+                    {
+                        Text = item.DisplayText,
+                        TextWrapping = TextWrapping.WrapWholeWords,
+                        TextTrimming = TextTrimming.WordEllipsis,
+                        MaxLines = 2,
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+
+                    var row = new Grid();
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                    row.Children.Add(itemText);
+
+                    var openIcon = new SymbolIcon
+                    {
+                        Symbol = Symbol.OpenFile,
+                        Opacity = 0.7,
+                        Margin = new Thickness(8, 0, 0, 0),
+                        VerticalAlignment = VerticalAlignment.Center
+                    };
+                    Grid.SetColumn(openIcon, 1);
+                    row.Children.Add(openIcon);
+
                     var button = new Button
                     {
-                        Content = item.DisplayText,
+                        Content = row,
                         HorizontalAlignment = HorizontalAlignment.Stretch,
-                        HorizontalContentAlignment = HorizontalAlignment.Left,
+                        HorizontalContentAlignment = HorizontalAlignment.Stretch,
                         Background = new SolidColorBrush(Colors.Transparent),
                         BorderThickness = new Thickness(0),
-                        Padding = new Thickness(0, 6, 0, 6),
+                        Padding = new Thickness(8, 7, 8, 7),
+                        CornerRadius = new CornerRadius(5),
                         MinWidth = 0
                     };
 
                     if (!string.IsNullOrWhiteSpace(item.Url))
                     {
                         var url = item.Url;
+                        ToolTipService.SetToolTip(button, $"Open {item.DisplayText}");
                         button.Click += async (_, _) => await OpenExternalUrlAsync(url, "CliWidget.OpenUrl");
                     }
                     else
@@ -421,8 +487,16 @@ public partial class FloatingBarWindow : Window
                         button.IsEnabled = false;
                     }
 
-                    panel.Children.Add(button);
+                    itemsPanel.Children.Add(button);
                 }
+
+                panel.Children.Add(new ScrollViewer
+                {
+                    Content = itemsPanel,
+                    MaxHeight = 360,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    VerticalScrollMode = ScrollMode.Auto
+                });
             }
         }
         catch (Exception ex)
@@ -474,9 +548,26 @@ public partial class FloatingBarWindow : Window
         }
         else
         {
-            controls.text.Text = count > 99 ? "99+" : Math.Max(0, count).ToString();
+            var countText = count > 99 ? "99+" : Math.Max(0, count).ToString();
+            controls.text.Text = FormatBadgeText(controls.badgeTextTemplate, countText);
             ToolTipService.SetToolTip(controls.button, controls.tooltip);
         }
+    }
+
+    private static string FormatBadgeText(string template, string count)
+    {
+        if (string.IsNullOrWhiteSpace(template))
+            return count;
+
+        if (template.Contains("{array.length}", StringComparison.Ordinal))
+            return template.Replace("{array.length}", count, StringComparison.Ordinal);
+
+        if (template.Contains("{value}", StringComparison.Ordinal))
+            return template.Replace("{value}", count, StringComparison.Ordinal);
+
+        return template.Contains("{count}", StringComparison.Ordinal)
+            ? template.Replace("{count}", count, StringComparison.Ordinal)
+            : $"{template.Trim()} {count}";
     }
 
     private static Windows.UI.Color ParseColor(string hex)
@@ -504,7 +595,8 @@ public partial class FloatingBarWindow : Window
             return;
 
         _isCleaningUp = true;
-        _tracker.StateChanged -= OnTrackerStateChanged;
+        if (_tracker != null)
+            _tracker.StateChanged -= OnTrackerStateChanged;
         
         if (_widgetHost != null)
         {

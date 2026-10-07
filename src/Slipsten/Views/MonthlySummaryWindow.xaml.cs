@@ -5,14 +5,19 @@ namespace Slipsten.Views;
 
 public partial class MonthlySummaryWindow : Window
 {
-    private readonly TimeTracker _tracker;
+    private readonly Func<int, int, List<DailySummary>> _summaryProvider;
     private int _year;
     private int _month;
 
     public MonthlySummaryWindow(TimeTracker tracker)
+        : this(tracker.GetMonthlySummary)
+    {
+    }
+
+    public MonthlySummaryWindow(Func<int, int, List<DailySummary>> summaryProvider)
     {
         InitializeComponent();
-        _tracker = tracker;
+        _summaryProvider = summaryProvider;
         _year = DateTime.Today.Year;
         _month = DateTime.Today.Month;
 
@@ -40,16 +45,22 @@ public partial class MonthlySummaryWindow : Window
     {
         MonthLabel.Text = new DateTime(_year, _month, 1).ToString("MMMM yyyy");
 
-        var rows = _tracker.GetMonthlySummary(_year, _month)
+        var rows = _summaryProvider(_year, _month)
             .Select(d => new SummaryRow(d))
             .ToList();
 
         SummaryList.ItemsSource = rows;
 
         var totalRounded = rows.Aggregate(TimeSpan.Zero, (a, r) => a + r.Source.TotalRounded);
-        TotalLabel.Text = $"Total (rounded): {FormatHours(totalRounded)}  |  " +
-                          $"Ordinary: {FormatHours(rows.Aggregate(TimeSpan.Zero, (a, r) => a + r.Source.Ordinary))}  |  " +
-                          $"Double Pay: {FormatHours(rows.Aggregate(TimeSpan.Zero, (a, r) => a + r.Source.DoublePay))}";
+        var ordinary = rows.Aggregate(TimeSpan.Zero, (a, r) => a + r.Source.Ordinary);
+        var doublePay = rows.Aggregate(TimeSpan.Zero, (a, r) => a + r.Source.DoublePay);
+        var workDays = SwedishWorkCalendar.GetWorkingDayCount(_year, _month);
+        var workMonth = TimeSpan.FromHours(workDays * 8);
+
+        TotalLabel.Text = $"Rounded: {FormatFooterHours(totalRounded)} ({FormatPercentage(totalRounded, workMonth)})  |  " +
+                          $"1x: {FormatFooterHours(ordinary)}  |  " +
+                          $"2x: {FormatFooterHours(doublePay)}  |  " +
+                          FormatPrediction(totalRounded, workDays, workMonth);
     }
 
     private void PrevMonth_Click(object sender, RoutedEventArgs e)
@@ -68,6 +79,34 @@ public partial class MonthlySummaryWindow : Window
 
     private static string FormatHours(TimeSpan t) =>
         $"{(int)t.TotalHours}h {t.Minutes:D2}m";
+
+    private string FormatPrediction(TimeSpan totalRounded, int workDays, TimeSpan workMonth)
+    {
+        var elapsedWorkDays = SwedishWorkCalendar.GetElapsedWorkingDayCount(
+            _year,
+            _month,
+            DateTime.Today);
+
+        if (elapsedWorkDays == 0)
+            return "Predicted: —";
+
+        var projected = TimeSpan.FromMinutes(
+            totalRounded.TotalMinutes / elapsedWorkDays * workDays);
+        return $"Predicted: {FormatFooterHours(projected)} ({FormatPercentage(projected, workMonth)})";
+    }
+
+    private static string FormatFooterHours(TimeSpan time) =>
+        time.Minutes == 0
+            ? $"{(int)time.TotalHours}h"
+            : $"{(int)time.TotalHours}h {time.Minutes:D2}m";
+
+    private static string FormatPercentage(TimeSpan value, TimeSpan target)
+    {
+        if (target == TimeSpan.Zero)
+            return "0%";
+
+        return $"{Math.Round(value.TotalMinutes / target.TotalMinutes * 100, MidpointRounding.AwayFromZero):0}%";
+    }
 }
 
 public class SummaryRow

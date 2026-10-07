@@ -51,6 +51,9 @@ public class CliWidgetHost : IDisposable
         return new CliWidgetHost(configPath, config);
     }
 
+    public static CliWidgetHost CreatePreview(CliWidgetsConfig config) =>
+        new(Path.Combine(Path.GetTempPath(), $"Slipsten-preview-{Guid.NewGuid():N}.json"), config);
+
     private static CliWidgetsConfig LoadConfig(string configPath)
     {
         if (!File.Exists(configPath))
