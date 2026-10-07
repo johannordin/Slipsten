@@ -205,7 +205,8 @@ public partial class App : Application
             OpenSettingsWindow,
             ExitApp,
             GetSavedFloatingBarPosition(settings),
-            _widgetHost);
+            _widgetHost,
+            widgetsConfigPath);
         _floatingBar.Activate();
 
         _phoneAlertTimer = _dispatcherQueue!.CreateTimer();
@@ -437,4 +438,3 @@ public partial class App : Application
         Exit();
     }
 }
-

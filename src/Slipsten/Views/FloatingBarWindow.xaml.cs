@@ -9,15 +9,16 @@ using Slipsten.Data;
 using Slipsten.Settings;
 using Slipsten.TimeTracking;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Foundation;
 using Windows.Graphics;
+using Windows.Storage;
 
 namespace Slipsten.Views;
 
 public partial class FloatingBarWindow : Window
 {
     private const int BarHeightPx = 32;
-    private const int BarChromeWidthPx = 136; // start/stop + time + menu + padding
-    private const int BarWidgetWidthPx = 34;  // per widget button
+    private const int InitialBarWidthPx = 100;
     private const int BarTopOffset = 50;
     private const int BarRightOffset = 50;
     private readonly TimeTracker _tracker;
@@ -25,11 +26,13 @@ public partial class FloatingBarWindow : Window
     private readonly Action _openSummaryWindow;
     private readonly Action _openSettingsWindow;
     private readonly Action _exitApp;
+    private readonly string? _widgetsConfigPath;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly DispatcherQueueTimer _refreshTimer;
     private readonly CliWidgetHost? _widgetHost;
     private readonly Dictionary<string, (Button button, Border circle, TextBlock text, string tooltip)> _widgetButtons = [];
     private bool _isCleaningUp;
+    private int _barWidthPx;
     private PointInt32? _lastKnownPosition;
 
     public FloatingBarWindow(
@@ -39,7 +42,8 @@ public partial class FloatingBarWindow : Window
         Action openSettingsWindow,
         Action exitApp,
         PointInt32? initialPosition,
-        CliWidgetHost? widgetHost = null)
+        CliWidgetHost? widgetHost = null,
+        string? widgetsConfigPath = null)
     {
         InitializeComponent();
         _tracker = tracker;
@@ -47,6 +51,7 @@ public partial class FloatingBarWindow : Window
         _openSummaryWindow = openSummaryWindow;
         _openSettingsWindow = openSettingsWindow;
         _exitApp = exitApp;
+        _widgetsConfigPath = widgetsConfigPath;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         _widgetHost = widgetHost;
 
@@ -54,7 +59,7 @@ public partial class FloatingBarWindow : Window
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         WindowHelper.SetAppIcon(this);
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(ComputeBarWidth(), BarHeightPx));
+        AppWindow.Resize(new Windows.Graphics.SizeInt32(InitialBarWidthPx, BarHeightPx));
         if (AppWindow.Presenter is OverlappedPresenter presenter)
         {
             presenter.IsAlwaysOnTop = true;
@@ -72,9 +77,11 @@ public partial class FloatingBarWindow : Window
         if (_widgetHost != null)
         {
             _widgetHost.WidgetStateChanged += OnWidgetStateChanged;
+            _widgetHost.ConfigurationReloaded += OnWidgetsConfigurationReloaded;
             InitializeWidgets();
         }
 
+        LayoutRoot.Loaded += (_, _) => ResizeToContent();
         _refreshTimer = _dispatcherQueue.CreateTimer();
         _refreshTimer.Interval = TimeSpan.FromSeconds(30);
         _refreshTimer.Tick += (_, _) => SafeUpdateUI();
@@ -149,7 +156,9 @@ public partial class FloatingBarWindow : Window
         if (presenter.State == OverlappedPresenterState.Maximized)
         {
             presenter.Restore();
-            sender.Resize(new SizeInt32(ComputeBarWidth(), BarHeightPx));
+            sender.Resize(new SizeInt32(
+                _barWidthPx == 0 ? InitialBarWidthPx : _barWidthPx,
+                BarHeightPx));
 
             var currentPosition = GetCurrentPosition();
             if (currentPosition.HasValue)
@@ -165,6 +174,7 @@ public partial class FloatingBarWindow : Window
         StartStopIcon.Glyph = _tracker.IsRunning ? "\uE71A" : "\uE768";
         var total = _tracker.TodayTotal();
         TotalTimeText.Text = $"{(int)total.TotalHours}:{total.Minutes:D2}";
+        ResizeToContent();
     }
 
     private void Menu_Click(object sender, RoutedEventArgs e)
@@ -247,6 +257,23 @@ public partial class FloatingBarWindow : Window
         _openSettingsWindow();
     }
 
+    private async void EditWidgets_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(_widgetsConfigPath))
+                throw new InvalidOperationException("Widgets configuration path is unavailable.");
+
+            var configFile = await StorageFile.GetFileFromPathAsync(_widgetsConfigPath);
+            if (!await Windows.System.Launcher.LaunchFileAsync(configFile))
+                throw new InvalidOperationException($"No application is associated with '{_widgetsConfigPath}'.");
+        }
+        catch (Exception ex)
+        {
+            CrashLogger.Log("FloatingBar.EditWidgets", ex);
+        }
+    }
+
     private void Exit_Click(object sender, RoutedEventArgs e)
     {
         _exitApp();
@@ -257,10 +284,17 @@ public partial class FloatingBarWindow : Window
         AppWindow.Hide();
     }
 
-    private int ComputeBarWidth()
+    private void ResizeToContent()
     {
-        var widgetCount = _widgetHost?.Widgets.Count ?? 0;
-        return BarChromeWidthPx + widgetCount * BarWidgetWidthPx;
+        LayoutRoot.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var scale = Content.XamlRoot?.RasterizationScale ?? 1;
+        var width = Math.Max(1, (int)Math.Ceiling(LayoutRoot.DesiredSize.Width * scale));
+
+        if (width == _barWidthPx)
+            return;
+
+        _barWidthPx = width;
+        AppWindow.Resize(new SizeInt32(width, BarHeightPx));
     }
 
     private void InitializeWidgets()
@@ -287,7 +321,7 @@ public partial class FloatingBarWindow : Window
             }
         }
 
-        AppWindow.Resize(new SizeInt32(ComputeBarWidth(), BarHeightPx));
+        ResizeToContent();
     }
 
     private Button CreateWidgetButton(CliWidgetDefinition widget)
@@ -413,6 +447,17 @@ public partial class FloatingBarWindow : Window
         });
     }
 
+    private void OnWidgetsConfigurationReloaded(object? sender, EventArgs e)
+    {
+        if (_isCleaningUp)
+            return;
+
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            InitializeWidgets();
+        });
+    }
+
     private void UpdateWidgetVisual(string widgetId, int count, bool hasError, string? errorMessage)
     {
         if (!_widgetButtons.TryGetValue(widgetId, out var controls))
@@ -464,6 +509,7 @@ public partial class FloatingBarWindow : Window
         if (_widgetHost != null)
         {
             _widgetHost.WidgetStateChanged -= OnWidgetStateChanged;
+            _widgetHost.ConfigurationReloaded -= OnWidgetsConfigurationReloaded;
         }
         
         AppWindow.Changed -= OnAppWindowChanged;
