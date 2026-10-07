@@ -20,6 +20,7 @@ public partial class FloatingBarWindow : Window
 {
     private const int BarHeightPx = 32;
     private const int InitialBarWidthPx = 100;
+    private const int WidgetTrailingPaddingPx = 12;
     private const int BarTopOffset = 50;
     private const int BarRightOffset = 50;
     private readonly TimeTracker? _tracker;
@@ -187,11 +188,6 @@ public partial class FloatingBarWindow : Window
         ResizeToContent();
     }
 
-    private void Menu_Click(object sender, RoutedEventArgs e)
-    {
-        // Flyout opens via Button.Flyout
-    }
-
     private static void AddFlyoutText(Panel panel, string text) =>
         panel.Children.Add(new TextBlock
         {
@@ -299,15 +295,20 @@ public partial class FloatingBarWindow : Window
 
     private void ResizeToContent()
     {
+        LayoutRoot.InvalidateMeasure();
         LayoutRoot.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         var scale = Content.XamlRoot?.RasterizationScale ?? 1;
-        var width = Math.Max(1, (int)Math.Ceiling(LayoutRoot.DesiredSize.Width * scale));
+        var widgetPadding = _widgetButtons.Count > 1 ? WidgetTrailingPaddingPx : 0;
+        var width = Math.Max(1, (int)Math.Ceiling(LayoutRoot.DesiredSize.Width * scale) + widgetPadding);
 
         if (width == _barWidthPx)
             return;
 
+        var position = AppWindow.Position;
+        var rightEdge = position.X + AppWindow.Size.Width;
         _barWidthPx = width;
         AppWindow.Resize(new SizeInt32(width, BarHeightPx));
+        Position(new PointInt32(rightEdge - width, position.Y));
     }
 
     private void InitializeWidgets()
@@ -352,7 +353,7 @@ public partial class FloatingBarWindow : Window
 
         var text = new TextBlock
         {
-            FontSize = 9,
+            FontSize = 10,
             Foreground = new SolidColorBrush(Colors.White),
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             HorizontalAlignment = HorizontalAlignment.Center,
@@ -369,12 +370,13 @@ public partial class FloatingBarWindow : Window
             Background = new SolidColorBrush(Colors.Transparent),
             BorderThickness = new Thickness(0),
             Padding = new Thickness(0),
-            MinWidth = 0,
+            MinWidth = 44,
             MinHeight = 0,
             Content = circle
         };
 
         ToolTipService.SetToolTip(button, widget.Tooltip);
+        button.SizeChanged += (_, _) => ResizeToContent();
 
         // Store references
         _widgetButtons[widget.Id] = (
@@ -552,6 +554,8 @@ public partial class FloatingBarWindow : Window
             controls.text.Text = FormatBadgeText(controls.badgeTextTemplate, countText);
             ToolTipService.SetToolTip(controls.button, controls.tooltip);
         }
+
+        ResizeToContent();
     }
 
     private static string FormatBadgeText(string template, string count)

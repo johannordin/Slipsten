@@ -370,11 +370,14 @@ public partial class App : Application
     private void OpenFloatingBarPreviewWindow(string preset)
     {
         var isBusyPreset = string.Equals(preset, "busy", StringComparison.OrdinalIgnoreCase);
+        var isEmptyPreset = string.Equals(preset, "empty", StringComparison.OrdinalIgnoreCase);
         var widgetHost = CliWidgetHost.CreatePreview(new CliWidgetsConfig
         {
-            CliWidgets = isBusyPreset
-                ? CreateBusyPreviewWidgets()
-                : CreateCompactPreviewWidgets()
+            CliWidgets = isEmptyPreset
+                ? []
+                : isBusyPreset
+                    ? CreateBusyPreviewWidgets()
+                    : CreateCompactPreviewWidgets()
         });
 
         _previewFloatingBar = new FloatingBarWindow(

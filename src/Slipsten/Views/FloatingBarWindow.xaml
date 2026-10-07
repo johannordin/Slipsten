@@ -11,9 +11,9 @@
         <Grid x:Name="AppTitleBar" Grid.Row="0"/>
 
         <!-- Content overlaid on the title bar drag region -->
-        <Grid Grid.Row="0" Padding="6,0,6,0" ColumnSpacing="6">
+        <Grid Grid.Row="0" Padding="6,0,6,0" ColumnSpacing="6"
+              HorizontalAlignment="Center">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
@@ -44,30 +44,19 @@
                 </ItemsControl.ItemsPanel>
             </ItemsControl>
 
-            <Button x:Name="MenuButton" Grid.Column="3" Click="Menu_Click"
-                    VerticalAlignment="Center" Background="Transparent" BorderThickness="0"
-                    Padding="2" MinWidth="0" MinHeight="0"
-                    ToolTipService.ToolTip="Menu">
-                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" FontSize="15" Glyph="&#xE700;"/>
-                <Button.Flyout>
-                    <MenuFlyout x:Name="AppMenuFlyout">
-                        <MenuFlyoutItem Text="Todays time" Click="TodaysTime_Click"/>
-                        <MenuFlyoutItem Text="Month summary" Click="MonthSummary_Click"/>
-                        <MenuFlyoutItem Text="Edit widgets" Click="EditWidgets_Click"/>
-                        <MenuFlyoutItem Text="Settings" Click="Settings_Click"/>
-                        <MenuFlyoutSeparator/>
-                        <MenuFlyoutItem Text="Exit" Click="Exit_Click"/>
-                    </MenuFlyout>
-                </Button.Flyout>
-            </Button>
-
             <Grid.ContextFlyout>
                 <MenuFlyout>
+                    <MenuFlyoutItem Text="Todays time" Click="TodaysTime_Click"/>
+                    <MenuFlyoutItem Text="Month summary" Click="MonthSummary_Click"/>
+                    <MenuFlyoutItem Text="Edit widgets" Click="EditWidgets_Click"/>
+                    <MenuFlyoutItem Text="Settings" Click="Settings_Click"/>
+                    <MenuFlyoutSeparator/>
                     <MenuFlyoutItem Text="Minimize to tray" Click="Minimize_Click">
                         <MenuFlyoutItem.Icon>
                             <SymbolIcon Symbol="Remove"/>
                         </MenuFlyoutItem.Icon>
                     </MenuFlyoutItem>
+                    <MenuFlyoutItem Text="Exit" Click="Exit_Click"/>
                 </MenuFlyout>
             </Grid.ContextFlyout>
         </Grid>
