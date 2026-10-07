@@ -1,0 +1,57 @@
+{
+  "variables": {
+    "githubOwner": "",
+    "azureOrg": "",
+    "azureProject": ""
+  },
+  "cliWidgets": [
+    {
+      "id": "blue-demo",
+      "tooltip": "Demo blue widget",
+      "refreshSeconds": 60,
+      "badge": {
+        "command": "echo []",
+        "source": "array.length",
+        "color": "#2563EB"
+      },
+      "flyout": {
+        "command": "echo []",
+        "displayTemplate": "{id} {name} ({status})",
+        "urlTemplate": "https://github.com/MyRepo/pulls/{id}",
+        "emptyMessage": "No items"
+      }
+    },
+    {
+      "id": "green-demo",
+      "tooltip": "Demo green widget",
+      "refreshSeconds": 60,
+      "badge": {
+        "command": "echo []",
+        "source": "array.length",
+        "color": "#16A34A"
+      },
+      "flyout": {
+        "command": "echo []",
+        "displayTemplate": "{id} {name} ({status})",
+        "urlTemplate": "https://github.com/MyRepo/pulls/{id}",
+        "emptyMessage": "No items"
+      }
+    },
+    {
+      "id": "red-demo",
+      "tooltip": "Demo red widget",
+      "refreshSeconds": 60,
+      "badge": {
+        "command": "echo []",
+        "source": "array.length",
+        "color": "#DC2626"
+      },
+      "flyout": {
+        "command": "echo []",
+        "displayTemplate": "{id} {name} ({status})",
+        "urlTemplate": "https://github.com/MyRepo/pulls/{id}",
+        "emptyMessage": "No items"
+      }
+    }
+  ]
+}

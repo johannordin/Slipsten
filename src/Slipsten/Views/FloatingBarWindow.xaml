@@ -17,7 +17,6 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <Button x:Name="StartStopButton" Grid.Column="0" Click="StartStop_Click"
@@ -36,76 +35,16 @@
                 <TextBlock x:Name="TotalTimeText" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
             </Button>
 
-            <Button x:Name="AzureDevOpsButton" Grid.Column="2" Click="AzureDevOps_Click"
-                    VerticalAlignment="Center" Background="Transparent" BorderThickness="0"
-                    Padding="0" MinWidth="0" MinHeight="0"
-                    ToolTipService.ToolTip="Azure DevOps">
-                <Grid Width="28" Height="28">
-                    <Border Width="18" Height="18" CornerRadius="4"
-                            HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Image Width="18" Height="18" Stretch="UniformToFill">
-                            <Image.Source>
-                                <BitmapImage UriSource="https://cdn.vsassets.io/content/icons/favicon.ico"/>
-                            </Image.Source>
-                        </Image>
-                    </Border>
-                    <Border x:Name="AzureDevOpsBadge" Background="#0078D4" CornerRadius="6"
-                            MinWidth="14" Height="14" Padding="3,0,3,0"
-                            HorizontalAlignment="Right" VerticalAlignment="Top"
-                            Visibility="Collapsed">
-                        <TextBlock x:Name="AzureDevOpsCountText" FontSize="9" Foreground="White"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                </Grid>
-                <Button.Flyout>
-                    <Flyout x:Name="AzureDevOpsFlyout"
-                            ShouldConstrainToRootBounds="False">
-                        <!-- <ScrollViewer MaxHeight="360" MinWidth="320"> -->
-                            <StackPanel x:Name="AzureDevOpsFlyoutPanel" Spacing="2" Padding="6"/>
-                        <!-- </ScrollViewer> -->
-                    </Flyout>
-                </Button.Flyout>
-            </Button>
+            <!-- Dynamic CLI widgets panel -->
+            <ItemsControl x:Name="WidgetsPanel" Grid.Column="2">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="6"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
 
-            <Button x:Name="GitHubButton" Grid.Column="3" Click="GitHub_Click"
-                    VerticalAlignment="Center" Background="Transparent" BorderThickness="0"
-                    Padding="0" MinWidth="0" MinHeight="0"
-                    ToolTipService.ToolTip="GitHub">
-                <Grid Width="28" Height="28">
-                    <Border Width="18" Height="18" Background="#24292F" CornerRadius="9"
-                            HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Image Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Image.Source>
-                                <SvgImageSource UriSource="ms-appx:///Resources/github-mark-white.svg"/>
-                            </Image.Source>
-                        </Image>
-                    </Border>
-                    <Border x:Name="CiBadge" Background="Tomato" CornerRadius="6"
-                            MinWidth="14" Height="14" Padding="3,0,3,0"
-                            HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                            Visibility="Collapsed">
-                        <TextBlock x:Name="CiCountText" FontSize="9" Foreground="White"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                    <Border x:Name="PrBadge" Background="MediumPurple" CornerRadius="6"
-                            MinWidth="14" Height="14" Padding="3,0,3,0"
-                            HorizontalAlignment="Right" VerticalAlignment="Top"
-                            Visibility="Collapsed">
-                        <TextBlock x:Name="PrCountText" FontSize="9" Foreground="White"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                </Grid>
-                <Button.Flyout>
-                    <Flyout x:Name="GitHubFlyout"
-                            ShouldConstrainToRootBounds="False">
-                        <!-- <ScrollViewer MaxHeight="360" MinWidth="320"> -->
-                            <StackPanel x:Name="GitHubFlyoutPanel" Spacing="2" Padding="6"/>
-                        <!-- </ScrollViewer> -->
-                    </Flyout>
-                </Button.Flyout>
-            </Button>
-
-            <Button x:Name="MenuButton" Grid.Column="4" Click="Menu_Click"
+            <Button x:Name="MenuButton" Grid.Column="3" Click="Menu_Click"
                     VerticalAlignment="Center" Background="Transparent" BorderThickness="0"
                     Padding="2" MinWidth="0" MinHeight="0"
                     ToolTipService.ToolTip="Menu">

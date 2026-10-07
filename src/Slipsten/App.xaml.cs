@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Slipsten.AzureDevOps;
+using Slipsten.CliWidgets;
 using Slipsten.Data;
 using Slipsten.GitHub;
 using Slipsten.Notifications;
@@ -20,6 +21,7 @@ public partial class App : Application
     private PhoneAlertService? _phoneAlertService;
     private GitHubMonitor? _gitHubMonitor;
     private AzureDevOpsMonitor? _azureDevOpsMonitor;
+    private CliWidgetHost? _widgetHost;
     private SettingsService? _settingsService;
     private MainWindow? _mainWindow;
     private FloatingBarWindow? _floatingBar;
@@ -182,17 +184,28 @@ public partial class App : Application
             catch (Exception ex) { CrashLogger.Log("App.Returned", ex); }
         };
 
+        // Load CLI widget host
+        var widgetsConfigPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Slipsten", "widgets.json");
+        try
+        {
+            _widgetHost = CliWidgetHost.LoadFrom(widgetsConfigPath);
+        }
+        catch (Exception ex)
+        {
+            CrashLogger.Log("App.LoadCliWidgetHost", ex);
+            _widgetHost = null;
+        }
+
         _floatingBar = new FloatingBarWindow(
             _tracker!,
-            _gitHubMonitor!,
-            _azureDevOpsMonitor!,
             OpenMainWindow,
             OpenMonthlySummaryWindow,
             OpenSettingsWindow,
-            OpenGitHubSettingsWindow,
-            OpenAzureDevOpsSettingsWindow,
             ExitApp,
-            GetSavedFloatingBarPosition(settings));
+            GetSavedFloatingBarPosition(settings),
+            _widgetHost);
         _floatingBar.Activate();
 
         _phoneAlertTimer = _dispatcherQueue!.CreateTimer();
@@ -203,6 +216,7 @@ public partial class App : Application
         _idleDetector.Start();
         _gitHubMonitor.Start();
         _azureDevOpsMonitor.Start();
+        _widgetHost?.StartAll();
         QueuePhoneAlertCheck();
     }
 
@@ -400,6 +414,8 @@ public partial class App : Application
         _floatingBar?.Cleanup();
         _gitHubMonitor?.Dispose();
         _azureDevOpsMonitor?.Dispose();
+        _widgetHost?.StopAll();
+        _widgetHost?.Dispose();
 
         _tracker?.Stop(string.Empty);
         _tracker?.Dispose();

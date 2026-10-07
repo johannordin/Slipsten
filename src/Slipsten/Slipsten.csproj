@@ -20,6 +20,7 @@
   <ItemGroup>
     <Content Include="Resources\slipsten.ico" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="Resources\github-mark-white.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="widgets.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(GenerateAppxPackageOnBuild)' == 'true'">
