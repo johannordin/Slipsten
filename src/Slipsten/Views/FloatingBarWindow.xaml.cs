@@ -20,7 +20,6 @@ public partial class FloatingBarWindow : Window
 {
     private const int BarHeightPx = 32;
     private const int InitialBarWidthPx = 100;
-    private const int WidgetTrailingPaddingPx = 8;
     private const int BarTopOffset = 50;
     private const int BarRightOffset = 50;
     private readonly TimeTracker? _tracker;
@@ -295,11 +294,16 @@ public partial class FloatingBarWindow : Window
 
     private void ResizeToContent()
     {
-        LayoutRoot.InvalidateMeasure();
-        LayoutRoot.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        ContentPanel.InvalidateMeasure();
+        ContentPanel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        var desiredSize = ContentPanel.DesiredSize;
+
         var scale = Content.XamlRoot?.RasterizationScale ?? 1;
-        var widgetPadding = _widgetButtons.Count > 1 ? WidgetTrailingPaddingPx : 0;
-        var width = Math.Max(1, (int)Math.Ceiling(LayoutRoot.DesiredSize.Width * scale) + widgetPadding);
+        var xamlRootWidth = Content.XamlRoot?.Size.Width ?? desiredSize.Width;
+        var frameWidth = Math.Max(0, (AppWindow.Size.Width / scale) - xamlRootWidth);
+        var width = Math.Max(
+            1,
+            (int)Math.Ceiling((desiredSize.Width + frameWidth) * scale));
 
         if (width == _barWidthPx)
             return;
@@ -367,10 +371,9 @@ public partial class FloatingBarWindow : Window
             Padding = hasBackground ? new Thickness(6, 1, 6, 1) : new Thickness(2, 1, 2, 1),
             MinWidth = 0,
             MinHeight = 0,
+            UseSystemFocusVisuals = false,
             Content = text
         };
-        FitWidgetButton(button, text);
-
         ToolTipService.SetToolTip(button, widget.Tooltip);
 
         // Store references
@@ -383,7 +386,17 @@ public partial class FloatingBarWindow : Window
         // Create flyout
         if (widget.Flyout != null)
         {
-            var flyout = new Flyout { ShouldConstrainToRootBounds = false };
+            var flyout = new Flyout
+            {
+                ShouldConstrainToRootBounds = false,
+                FlyoutPresenterStyle = new Style(typeof(FlyoutPresenter))
+                {
+                    Setters =
+                    {
+                        new Setter(FlyoutPresenter.PaddingProperty, new Thickness(0))
+                    }
+                }
+            };
             var flyoutPanel = new StackPanel
             {
                 Width = 360,
@@ -466,24 +479,9 @@ public partial class FloatingBarWindow : Window
                             VerticalAlignment = VerticalAlignment.Center
                         };
 
-                        var row = new Grid();
-                        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                        row.Children.Add(itemText);
-
-                        var openIcon = new SymbolIcon
-                        {
-                            Symbol = Symbol.OpenFile,
-                            Opacity = 0.7,
-                            Margin = new Thickness(6, 0, 0, 0),
-                            VerticalAlignment = VerticalAlignment.Center
-                        };
-                        Grid.SetColumn(openIcon, 1);
-                        row.Children.Add(openIcon);
-
                         var button = new Button
                         {
-                            Content = row,
+                            Content = itemText,
                             HorizontalAlignment = HorizontalAlignment.Stretch,
                             HorizontalContentAlignment = HorizontalAlignment.Stretch,
                             Background = new SolidColorBrush(Colors.Transparent),
@@ -573,14 +571,7 @@ public partial class FloatingBarWindow : Window
             ToolTipService.SetToolTip(controls.button, controls.tooltip);
         }
 
-        FitWidgetButton(controls.button, controls.text);
         ResizeToContent();
-    }
-
-    private static void FitWidgetButton(Button button, TextBlock text)
-    {
-        text.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        button.Width = Math.Ceiling(text.DesiredSize.Width + button.Padding.Left + button.Padding.Right);
     }
 
     private static string FormatBadgeText(string template, string count)

@@ -28,6 +28,7 @@ public class CliWidgetHost : IDisposable
 
     private CliWidgetHost(string configPath, CliWidgetsConfig config)
     {
+        ValidateConfig(config);
         _configPath = Path.GetFullPath(configPath);
         _config = config;
         _runners.AddRange(CreateRunners(config));
@@ -84,6 +85,26 @@ public class CliWidgetHost : IDisposable
         };
 
         return JsonSerializer.Deserialize<CliWidgetsConfig>(json, options) ?? new CliWidgetsConfig();
+    }
+
+    private static void ValidateConfig(CliWidgetsConfig config)
+    {
+        foreach (var widget in config.CliWidgets)
+        {
+            if (!string.IsNullOrWhiteSpace(widget.Badge?.Command) ||
+                !string.IsNullOrWhiteSpace(widget.Flyout?.Command))
+            {
+                throw new InvalidOperationException(
+                    $"Widget '{widget.Id}' uses a nested command. Set 'command' on the widget instead.");
+            }
+
+            if ((widget.Badge != null || widget.Flyout != null) &&
+                string.IsNullOrWhiteSpace(widget.Command))
+            {
+                throw new InvalidOperationException(
+                    $"Widget '{widget.Id}' requires a widget-level 'command'.");
+            }
+        }
     }
 
     public CliWidgetRunner? GetRunner(string widgetId)
@@ -158,6 +179,7 @@ public class CliWidgetHost : IDisposable
         try
         {
             var config = LoadConfig(_configPath);
+            ValidateConfig(config);
             var newRunners = CreateRunners(config);
             List<CliWidgetRunner> oldRunners;
             bool shouldStart;

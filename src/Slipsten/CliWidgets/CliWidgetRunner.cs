@@ -10,6 +10,7 @@ public partial class CliWidgetRunner : IDisposable
     private readonly Dictionary<string, string> _variables;
     private readonly Timer? _timer;
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
+    private string? _lastCommandOutput;
     private bool _disposed;
 
     public event EventHandler? StateChanged;
@@ -57,10 +58,11 @@ public partial class CliWidgetRunner : IDisposable
 
         try
         {
-            var command = GetCommand(_definition.Badge.Command, "badge");
+            var command = GetCommand();
             var output = await RunCommandAsync(command);
             var count = ParseBadgeCount(output, _definition.Badge);
 
+            _lastCommandOutput = output;
             var changed = count != BadgeCount;
             BadgeCount = count;
             HasError = false;
@@ -105,25 +107,25 @@ public partial class CliWidgetRunner : IDisposable
             throw new InvalidOperationException($"Widget '{WidgetId}' has invalid flyout template configuration. {migrationHint}");
         }
 
-        var command = GetCommand(_definition.Flyout.Command, "flyout");
-        var output = await RunCommandAsync(command);
+        var output = _lastCommandOutput;
+        if (output == null)
+        {
+            output = await RunCommandAsync(GetCommand());
+            _lastCommandOutput = output;
+        }
+
         return ParseFlyoutItems(output, displayTemplate, urlTemplate, groupByTemplate);
     }
 
-    private string GetCommand(string sectionCommand, string sectionName)
+    private string GetCommand()
     {
-        var command = string.IsNullOrWhiteSpace(sectionCommand)
-            ? _definition.Command
-            : sectionCommand;
-
-        if (string.IsNullOrWhiteSpace(command))
+        if (string.IsNullOrWhiteSpace(_definition.Command))
         {
             throw new InvalidOperationException(
-                $"Widget '{WidgetId}' has no {sectionName} command. " +
-                "Set 'command' on the widget or on the specific section.");
+                $"Widget '{WidgetId}' requires a widget-level 'command'.");
         }
 
-        return SubstituteVariables(command);
+        return SubstituteVariables(_definition.Command);
     }
 
     private async Task<string> RunCommandAsync(string command)

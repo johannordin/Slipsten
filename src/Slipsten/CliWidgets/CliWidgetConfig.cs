@@ -19,6 +19,7 @@ public class CliWidgetDefinition
 
 public class BadgeDefinition
 {
+    // Retained only to provide an explicit migration error for legacy configurations.
     public string Command { get; set; } = "";
     public string Text { get; set; } = "";
     public string Source { get; set; } = "array.length";
@@ -30,6 +31,7 @@ public class BadgeDefinition
 
 public class FlyoutDefinition
 {
+    // Retained only to provide an explicit migration error for legacy configurations.
     public string Command { get; set; } = "";
     public string DisplayTemplate { get; set; } = "";
     public string UrlTemplate { get; set; } = "";
