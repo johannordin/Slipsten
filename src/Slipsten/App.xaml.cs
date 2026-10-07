@@ -409,8 +409,7 @@ public partial class App : Application
             Command = "echo [1,2,3]",
             Badge = new BadgeDefinition
             {
-                Text = "PR:{array.length}",
-                Color = "#8250DF"
+                Text = "PR:{array.length}"
             }
         }
     ];

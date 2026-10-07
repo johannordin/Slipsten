@@ -92,6 +92,7 @@ public partial class CliWidgetRunner : IDisposable
 
         var displayTemplate = _definition.Flyout.DisplayTemplate?.Trim() ?? string.Empty;
         var urlTemplate = _definition.Flyout.UrlTemplate?.Trim() ?? string.Empty;
+        var groupByTemplate = _definition.Flyout.GroupBy?.Trim() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(displayTemplate) || string.IsNullOrWhiteSpace(urlTemplate))
         {
@@ -106,7 +107,7 @@ public partial class CliWidgetRunner : IDisposable
 
         var command = GetCommand(_definition.Flyout.Command, "flyout");
         var output = await RunCommandAsync(command);
-        return ParseFlyoutItems(output, displayTemplate, urlTemplate);
+        return ParseFlyoutItems(output, displayTemplate, urlTemplate, groupByTemplate);
     }
 
     private string GetCommand(string sectionCommand, string sectionName)
@@ -203,7 +204,11 @@ public partial class CliWidgetRunner : IDisposable
         return badge.Source;
     }
 
-    private List<FlyoutItem> ParseFlyoutItems(string jsonOutput, string itemFormat, string itemUrl)
+    private List<FlyoutItem> ParseFlyoutItems(
+        string jsonOutput,
+        string itemFormat,
+        string itemUrl,
+        string groupByTemplate)
     {
         if (string.IsNullOrWhiteSpace(jsonOutput))
             return [];
@@ -217,7 +222,10 @@ public partial class CliWidgetRunner : IDisposable
         {
             var displayText = ResolveTemplate(itemFormat, item);
             var url = string.IsNullOrWhiteSpace(itemUrl) ? null : ResolveTemplate(itemUrl, item);
-            items.Add(new FlyoutItem(displayText, url));
+            var group = string.IsNullOrWhiteSpace(groupByTemplate)
+                ? null
+                : ResolveTemplate(groupByTemplate, item);
+            items.Add(new FlyoutItem(displayText, url, group));
         }
 
         return items;
@@ -297,4 +305,4 @@ public partial class CliWidgetRunner : IDisposable
     }
 }
 
-public record FlyoutItem(string DisplayText, string? Url);
+public record FlyoutItem(string DisplayText, string? Url, string? Group);

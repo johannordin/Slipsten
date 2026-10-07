@@ -22,7 +22,8 @@ public class BadgeDefinition
     public string Command { get; set; } = "";
     public string Text { get; set; } = "";
     public string Source { get; set; } = "array.length";
-    public string Color { get; set; } = "#0078d4";
+    public string Color { get; set; } = "";
+    public string TextColor { get; set; } = "";
     public string Position { get; set; } = "bottom-right";
     public string ShowWhen { get; set; } = "> 0";
 }
@@ -32,6 +33,7 @@ public class FlyoutDefinition
     public string Command { get; set; } = "";
     public string DisplayTemplate { get; set; } = "";
     public string UrlTemplate { get; set; } = "";
+    public string GroupBy { get; set; } = "";
 
     // Legacy keys are retained for explicit error reporting during migration.
     public string ItemFormat { get; set; } = "";

@@ -20,7 +20,7 @@ public partial class FloatingBarWindow : Window
 {
     private const int BarHeightPx = 32;
     private const int InitialBarWidthPx = 100;
-    private const int WidgetTrailingPaddingPx = 12;
+    private const int WidgetTrailingPaddingPx = 8;
     private const int BarTopOffset = 50;
     private const int BarRightOffset = 50;
     private readonly TimeTracker? _tracker;
@@ -34,7 +34,7 @@ public partial class FloatingBarWindow : Window
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly DispatcherQueueTimer _refreshTimer;
     private readonly CliWidgetHost? _widgetHost;
-    private readonly Dictionary<string, (Button button, Border circle, TextBlock text, string tooltip, string badgeTextTemplate)> _widgetButtons = [];
+    private readonly Dictionary<string, (Button button, TextBlock text, string tooltip, string badgeTextTemplate)> _widgetButtons = [];
     private bool _isCleaningUp;
     private int _barWidthPx;
     private PointInt32? _lastKnownPosition;
@@ -340,21 +340,9 @@ public partial class FloatingBarWindow : Window
 
     private Button CreateWidgetButton(CliWidgetDefinition widget)
     {
-        var circle = new Border
-        {
-            Background = new SolidColorBrush(ParseColor(widget.Badge?.Color ?? "#0078d4")),
-            CornerRadius = new CornerRadius(10),
-            Height = 20,
-            MinWidth = 20,
-            Padding = new Thickness(5, 0, 5, 0),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-
         var text = new TextBlock
         {
             FontSize = 10,
-            Foreground = new SolidColorBrush(Colors.White),
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
@@ -362,26 +350,32 @@ public partial class FloatingBarWindow : Window
         };
         text.Translation = new Vector3(0, -1, 0);
 
-        circle.Child = text;
+        var backgroundColor = widget.Badge?.Color?.Trim() ?? string.Empty;
+        var textColor = widget.Badge?.TextColor?.Trim() ?? string.Empty;
+        var hasBackground = !string.IsNullOrWhiteSpace(backgroundColor);
+        if (!string.IsNullOrWhiteSpace(textColor))
+            text.Foreground = new SolidColorBrush(ParseColor(textColor));
 
         var button = new Button
         {
             VerticalAlignment = VerticalAlignment.Center,
-            Background = new SolidColorBrush(Colors.Transparent),
+            Background = hasBackground
+                ? new SolidColorBrush(ParseColor(backgroundColor))
+                : new SolidColorBrush(Colors.Transparent),
             BorderThickness = new Thickness(0),
-            Padding = new Thickness(0),
-            MinWidth = 44,
+            CornerRadius = hasBackground ? new CornerRadius(4) : new CornerRadius(0),
+            Padding = hasBackground ? new Thickness(6, 1, 6, 1) : new Thickness(2, 1, 2, 1),
+            MinWidth = 0,
             MinHeight = 0,
-            Content = circle
+            Content = text
         };
+        FitWidgetButton(button, text);
 
         ToolTipService.SetToolTip(button, widget.Tooltip);
-        button.SizeChanged += (_, _) => ResizeToContent();
 
         // Store references
         _widgetButtons[widget.Id] = (
             button,
-            circle,
             text,
             widget.Tooltip,
             widget.Badge?.Text ?? string.Empty);
@@ -394,7 +388,7 @@ public partial class FloatingBarWindow : Window
             {
                 Width = 360,
                 Spacing = 0,
-                Padding = new Thickness(8)
+                Padding = new Thickness(6)
             };
             flyout.Content = flyoutPanel;
             
@@ -422,7 +416,7 @@ public partial class FloatingBarWindow : Window
             Text = widgetTooltip,
             FontSize = 14,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-            Margin = new Thickness(4, 2, 4, 6)
+            Margin = new Thickness(2, 0, 2, 4)
         });
 
         var runner = _widgetHost?.GetRunner(widgetId);
@@ -439,63 +433,87 @@ public partial class FloatingBarWindow : Window
             }
             else
             {
-                var itemsPanel = new StackPanel { Spacing = 2 };
-                foreach (var item in items)
+                var itemsPanel = new StackPanel
                 {
-                    var itemText = new TextBlock
-                    {
-                        Text = item.DisplayText,
-                        TextWrapping = TextWrapping.WrapWholeWords,
-                        TextTrimming = TextTrimming.WordEllipsis,
-                        MaxLines = 2,
-                        VerticalAlignment = VerticalAlignment.Center
-                    };
+                    Width = 348,
+                    Spacing = 1
+                };
+                var groupedItems = items.GroupBy(item => item.Group ?? string.Empty);
+                var showGroupHeaders = !string.IsNullOrWhiteSpace(flyoutDef.GroupBy);
 
-                    var row = new Grid();
-                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-                    row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-                    row.Children.Add(itemText);
-
-                    var openIcon = new SymbolIcon
+                foreach (var group in groupedItems)
+                {
+                    if (showGroupHeaders)
                     {
-                        Symbol = Symbol.OpenFile,
-                        Opacity = 0.7,
-                        Margin = new Thickness(8, 0, 0, 0),
-                        VerticalAlignment = VerticalAlignment.Center
-                    };
-                    Grid.SetColumn(openIcon, 1);
-                    row.Children.Add(openIcon);
-
-                    var button = new Button
-                    {
-                        Content = row,
-                        HorizontalAlignment = HorizontalAlignment.Stretch,
-                        HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                        Background = new SolidColorBrush(Colors.Transparent),
-                        BorderThickness = new Thickness(0),
-                        Padding = new Thickness(8, 7, 8, 7),
-                        CornerRadius = new CornerRadius(5),
-                        MinWidth = 0
-                    };
-
-                    if (!string.IsNullOrWhiteSpace(item.Url))
-                    {
-                        var url = item.Url;
-                        ToolTipService.SetToolTip(button, $"Open {item.DisplayText}");
-                        button.Click += async (_, _) => await OpenExternalUrlAsync(url, "CliWidget.OpenUrl");
-                    }
-                    else
-                    {
-                        button.IsEnabled = false;
+                        itemsPanel.Children.Add(new TextBlock
+                        {
+                            Text = group.Key,
+                            FontSize = 12,
+                            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                            Opacity = 0.7,
+                            Margin = new Thickness(6, itemsPanel.Children.Count == 0 ? 0 : 6, 6, 2)
+                        });
                     }
 
-                    itemsPanel.Children.Add(button);
+                    foreach (var item in group)
+                    {
+                        var itemText = new TextBlock
+                        {
+                            Text = item.DisplayText,
+                            TextWrapping = TextWrapping.WrapWholeWords,
+                            TextTrimming = TextTrimming.WordEllipsis,
+                            MaxLines = 2,
+                            VerticalAlignment = VerticalAlignment.Center
+                        };
+
+                        var row = new Grid();
+                        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                        row.Children.Add(itemText);
+
+                        var openIcon = new SymbolIcon
+                        {
+                            Symbol = Symbol.OpenFile,
+                            Opacity = 0.7,
+                            Margin = new Thickness(6, 0, 0, 0),
+                            VerticalAlignment = VerticalAlignment.Center
+                        };
+                        Grid.SetColumn(openIcon, 1);
+                        row.Children.Add(openIcon);
+
+                        var button = new Button
+                        {
+                            Content = row,
+                            HorizontalAlignment = HorizontalAlignment.Stretch,
+                            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                            Background = new SolidColorBrush(Colors.Transparent),
+                            BorderThickness = new Thickness(0),
+                            Padding = new Thickness(6, 4, 6, 4),
+                            CornerRadius = new CornerRadius(4),
+                            MinWidth = 0
+                        };
+
+                        if (!string.IsNullOrWhiteSpace(item.Url))
+                        {
+                            var url = item.Url;
+                            ToolTipService.SetToolTip(button, $"Open {item.DisplayText}");
+                            button.Click += async (_, _) => await OpenExternalUrlAsync(url, "CliWidget.OpenUrl");
+                        }
+                        else
+                        {
+                            button.IsEnabled = false;
+                        }
+
+                        itemsPanel.Children.Add(button);
+                    }
                 }
 
                 panel.Children.Add(new ScrollViewer
                 {
                     Content = itemsPanel,
                     MaxHeight = 360,
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                    HorizontalScrollMode = ScrollMode.Disabled,
                     VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                     VerticalScrollMode = ScrollMode.Auto
                 });
@@ -555,7 +573,14 @@ public partial class FloatingBarWindow : Window
             ToolTipService.SetToolTip(controls.button, controls.tooltip);
         }
 
+        FitWidgetButton(controls.button, controls.text);
         ResizeToContent();
+    }
+
+    private static void FitWidgetButton(Button button, TextBlock text)
+    {
+        text.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        button.Width = Math.Ceiling(text.DesiredSize.Width + button.Padding.Left + button.Padding.Right);
     }
 
     private static string FormatBadgeText(string template, string count)
