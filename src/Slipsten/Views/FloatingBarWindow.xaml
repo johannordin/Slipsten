@@ -12,7 +12,9 @@
 
         <!-- Content overlaid on the title bar drag region -->
         <Border x:Name="ContentPanel" Grid.Row="0" Padding="6">
-            <Grid ColumnSpacing="6" HorizontalAlignment="Center">
+            <Grid x:Name="ContentGrid" ColumnSpacing="6"
+                  HorizontalAlignment="Center"
+                  VerticalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>

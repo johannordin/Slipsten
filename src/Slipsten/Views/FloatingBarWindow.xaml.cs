@@ -1,5 +1,6 @@
 using Microsoft.UI;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Input;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -33,6 +34,7 @@ public partial class FloatingBarWindow : Window
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly DispatcherQueueTimer _refreshTimer;
     private readonly CliWidgetHost? _widgetHost;
+    private readonly InputNonClientPointerSource _nonClientPointerSource;
     private readonly Dictionary<string, (Button button, TextBlock text, string tooltip, string badgeTextTemplate)> _widgetButtons = [];
     private bool _isCleaningUp;
     private int _barWidthPx;
@@ -66,6 +68,7 @@ public partial class FloatingBarWindow : Window
         SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop();
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
+        _nonClientPointerSource = InputNonClientPointerSource.GetForWindowId(AppWindow.Id);
         WindowHelper.SetAppIcon(this);
         AppWindow.Resize(new Windows.Graphics.SizeInt32(InitialBarWidthPx, BarHeightPx));
         if (AppWindow.Presenter is OverlappedPresenter presenter)
@@ -91,6 +94,7 @@ public partial class FloatingBarWindow : Window
         }
 
         LayoutRoot.Loaded += (_, _) => ResizeToContent();
+        ContentGrid.SizeChanged += (_, _) => UpdateTitleBarInputRegions();
         _refreshTimer = _dispatcherQueue.CreateTimer();
         _refreshTimer.Interval = TimeSpan.FromSeconds(30);
         _refreshTimer.Tick += (_, _) => SafeUpdateUI();
@@ -313,6 +317,23 @@ public partial class FloatingBarWindow : Window
         _barWidthPx = width;
         AppWindow.Resize(new SizeInt32(width, BarHeightPx));
         Position(new PointInt32(rightEdge - width, position.Y));
+    }
+
+    private void UpdateTitleBarInputRegions()
+    {
+        var xamlRoot = Content.XamlRoot;
+        if (xamlRoot == null || ContentGrid.ActualWidth <= 0 || ContentGrid.ActualHeight <= 0)
+            return;
+
+        var scale = xamlRoot.RasterizationScale;
+        var origin = ContentGrid.TransformToVisual(null).TransformPoint(new Point(0, 0));
+        var region = new RectInt32(
+            (int)Math.Floor(origin.X * scale),
+            (int)Math.Floor(origin.Y * scale),
+            (int)Math.Ceiling(ContentGrid.ActualWidth * scale),
+            (int)Math.Ceiling(ContentGrid.ActualHeight * scale));
+
+        _nonClientPointerSource.SetRegionRects(NonClientRegionKind.Passthrough, [region]);
     }
 
     private void InitializeWidgets()
